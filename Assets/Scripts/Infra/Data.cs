@@ -3,35 +3,35 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum ShirtColor { Red, RoyalBlue, Green, AquaBlue, VioletPurple, CanaryYellow, Orange, TropicalPink, Other }
-public enum Emotion { Smile, Cry, Other }
+public enum ShirtColor {
+    Red, RoyalBlue, Green, AquaBlue, VioletPurple, CanaryYellow, Orange, TropicalPink, Other
+}
 
-[Serializable]
-public class EnemyRequirement {
+// 表情は4種のみ
+public enum Emotion { Smile, Sleep, Surprise, Wink }
+
+[Serializable] public class EnemyRequirement {
     public ShirtColor color;
     public Emotion emotion;
     public int count = 1;
 }
 
-[Serializable]
-public class PersonTag {
+[Serializable] public class PersonTag {
     public ShirtColor color;
     public Emotion emotion;
 }
 
-[Serializable]
-public class PhotoAnalysis {
+[Serializable] public class PhotoAnalysis {
     public int totalPeople;
     public List<PersonTag> people = new List<PersonTag>();
+}
 
-    // 集計を返す（(色,表情)→人数）
-    public Dictionary<(ShirtColor, Emotion), int> CountBuckets() {
-        var dict = new Dictionary<(ShirtColor, Emotion), int>();
-        foreach (var p in people) {
-            var key = (p.color, p.emotion);
-            dict.TryGetValue(key, out var v);
-            dict[key] = v + 1;
-        }
-        return dict;
+// ===== Waves =====
+[Serializable] public class Wave {
+    public string name = "Wave";
+    public float timeLimitSec = 60f;              // ウェーブごとの持ち時間
+    public List<EnemyRequirement> enemies;        // このウェーブで倒すべき条件
+    public int TotalEnemyCount() {
+        int s = 0; if (enemies != null) foreach (var e in enemies) s += Mathf.Max(0, e.count); return s;
     }
 }
