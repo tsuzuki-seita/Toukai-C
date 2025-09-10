@@ -14,4 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   gameClearSceneName: GameClear
   gameOverSceneName: GameOver
-  waves: []
+  waves:
+  - name: "\u30E1\u30F3\u30BF\u30FC"
+    timeLimitSec: 60
+    enemies:
+    - color: 6
+      emotion: 0
+      count: 1
