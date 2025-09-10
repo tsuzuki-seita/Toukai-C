@@ -5,31 +5,44 @@ using System.Linq;
 using UniRx;
 using UnityEngine;
 
-public interface IGameModel : IDisposable {
-    // View へ公開（描画のみ）
+public interface IGameModel : IDisposable 
+{
+    // 表示系
     IReadOnlyReactiveProperty<string> ScoreText { get; }
     IReadOnlyReactiveProperty<string> TimerText { get; }
     IReadOnlyReactiveProperty<string> EnemyHintText { get; }
     IReadOnlyReactiveProperty<bool> CaptureButtonInteractable { get; }
-    IReadOnlyReactiveProperty<string> CameraFaceText { get; } // "Front"/"Back" 表示
+    IReadOnlyReactiveProperty<string> CameraFaceText { get; }
+    IReadOnlyReactiveProperty<bool> PreviewVisible { get; }
 
-    // Presenter が購読してシーン遷移だけ実行
+    // プレビュー開始時に View がテクスチャと回転/反転を受け取る
+    IObservable<CameraPreviewInfo> PreviewStarted { get; }
+
+    // シーン遷移（Model→Presenter）
     IObservable<string> NavigateToScene { get; }
 
-    // Presenter はクリックを流すだけ
-    ReactiveCommand<Unit> RequestCapture { get; }
-    ReactiveCommand<Unit> ToggleCameraFace { get; }
+    // ボタンなど（Presenter→Model）
+    ReactiveCommand RequestStartPreview { get; }   // 「撮影開始」ボタン
+    ReactiveCommand RequestCapture { get; }        // 「撮影」ボタン
+    ReactiveCommand ToggleCameraFace { get; }      // 内/外トグル
+    ReactiveCommand AttackAnimationFinished { get; } // 攻撃演出が終わったらView→Presenter→Model
 }
 
-public class GameModel : IGameModel {
+public class GameModel : IGameModel 
+{
     public IReadOnlyReactiveProperty<string> ScoreText => _scoreText;
     public IReadOnlyReactiveProperty<string> TimerText => _timerText;
     public IReadOnlyReactiveProperty<string> EnemyHintText => _hintText;
     public IReadOnlyReactiveProperty<bool> CaptureButtonInteractable => _captureInteractable;
     public IReadOnlyReactiveProperty<string> CameraFaceText => _cameraFaceText;
+    public IReadOnlyReactiveProperty<bool> PreviewVisible => _previewVisible;
+    public IObservable<CameraPreviewInfo> PreviewStarted => _previewStarted;
     public IObservable<string> NavigateToScene => _navigateToScene;
-    public ReactiveCommand<Unit> RequestCapture { get; } = new ReactiveCommand<Unit>();
-    public ReactiveCommand<Unit> ToggleCameraFace { get; } = new ReactiveCommand<Unit>();
+
+    public ReactiveCommand RequestCapture { get; } = new ReactiveCommand();
+    public ReactiveCommand ToggleCameraFace { get; } = new ReactiveCommand();
+    public ReactiveCommand RequestStartPreview { get; } = new ReactiveCommand();
+    public ReactiveCommand AttackAnimationFinished { get; } = new ReactiveCommand();
 
     readonly ICameraService camera;
     readonly IPhotoSaver saver;
@@ -45,6 +58,11 @@ public class GameModel : IGameModel {
     readonly ReactiveProperty<bool> _captureInteractable = new ReactiveProperty<bool>(true);
     readonly ReactiveProperty<string> _cameraFaceText = new ReactiveProperty<string>("Back");
     readonly Subject<string> _navigateToScene = new Subject<string>();
+    readonly ReactiveProperty<bool> _previewVisible = new ReactiveProperty<bool>(false);
+    readonly Subject<CameraPreviewInfo> _previewStarted = new Subject<CameraPreviewInfo>();
+
+    bool useFront = false;
+    bool? lastWinPending = null; // 攻撃演出の完了待ちに使う
 
     int score = 0;
     int currentWaveIndex = -1;
@@ -52,35 +70,64 @@ public class GameModel : IGameModel {
     List<EnemyRequirement> requires = new List<EnemyRequirement>();
     bool busy = false;
     bool ended = false;
-    bool useFront = false; // 内カメラ=false→外カメラ/true→内カメラ
 
     public GameModel(ICameraService cam, IPhotoSaver saver, IGeminiAnalyzer analyzer, WaveSetConfig waveSet) {
         this.camera = cam; this.saver = saver; this.analyzer = analyzer; this.waveSet = waveSet;
 
-        // 撮影要求
-        RequestCapture.Where(_ => !busy && !ended)
-            .Do(_ => { busy = true; _captureInteractable.Value = false; })
-            .SelectMany(_ => camera.CaptureOneJpg(useFront))
-            .Do(t => saver.SaveJpg(t.jpg))
-            .SelectMany(t => analyzer.Analyze(t.tex))
-            .Select(analysis => Judge(analysis))
+        // 撮影開始（プレビューON）
+        RequestStartPreview
+            .Where(_ => !ended && !camera.IsPreviewRunning)
+            .SelectMany(_ => camera.StartPreview(useFront))
             .ObserveOnMainThread()
-            .Subscribe(win => {
-                busy = false; _captureInteractable.Value = true;
-                if (win) { OnWaveCleared(); } else { EndGame(waveSet.gameOverSceneName); }
+            .Subscribe(info => {
+                _previewVisible.Value = true;
+                _previewStarted.OnNext(info); // View はここで RawImage に貼る＆回転/反転を適用
             }, err => {
-                busy = false; _captureInteractable.Value = true;
                 Debug.LogError(err);
-                EndGame(waveSet.gameOverSceneName);
             }).AddTo(cd);
 
-        // カメラ切替
+        // 撮影（プレビューから1枚）
+        RequestCapture
+            .Where(_ => !ended && camera.IsPreviewRunning)
+            .Do(_ => { busy = true; _captureInteractable.Value = false; _previewVisible.Value = false; }) // RawImageを消す（攻撃演出の裏で判定）
+            .SelectMany(_ => camera.CaptureOneFromPreviewUpright(unMirrorFront:true))
+            .Do(t => saver.SaveJpg(t.jpg)) // iOSアルバムへ保存（向き補正後）
+            .SelectMany(t => analyzer.Analyze(t.tex))
+            .Select(analysis => Judge(analysis)) // true=勝ち/false=負け
+            .ObserveOnMainThread()
+            .Subscribe(win => {
+                // ここでは遷移せず、まず“攻撃演出の完了”を待つ
+                lastWinPending = win;
+                // Viewに任せる：Presenter経由で攻撃演出をかけ、終わったら AttackAnimationFinished を押してもらう
+            }, err => {
+                Debug.LogError(err);
+                lastWinPending = false; // エラーは敗北扱いで演出後に遷移
+            }).AddTo(cd);
+
+        // 攻撃演出が終わったら結果に従って遷移/次ウェーブ
+        AttackAnimationFinished
+            .Where(_ => lastWinPending.HasValue)
+            .Subscribe(_ => {
+                busy = false; _captureInteractable.Value = true;
+                if (lastWinPending.Value) {
+                    OnWaveCleared();               // 勝ち → 次の敵（クリアならNavigate）
+                } else {
+                    EndGame(waveSet.gameOverSceneName); // 負け → 遷移
+                }
+                lastWinPending = null;
+            }).AddTo(cd);
+
+        // カメラ切替（プレビュー中ならいったん再起動）
         ToggleCameraFace.Subscribe(_ => {
             useFront = !useFront;
             _cameraFaceText.Value = useFront ? "Front" : "Back";
+            if (camera.IsPreviewRunning) {
+                camera.StopPreview();
+                RequestStartPreview.Execute(); // すぐ再開
+            }
         }).AddTo(cd);
 
-        // 開始
+        // 開始：最初のウェーブ出現
         NextWave();
     }
 
