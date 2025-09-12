@@ -16,10 +16,8 @@ public interface IGameView {
 }
 
 public class GameView : MonoBehaviour, IGameView {
-    public Button captureStartButton;
     public Button captureButton;
     public Button switchCameraButton;
-    public RawImage cameraPreview;
     public Text scoreText;
     public Text timerText;
     public Text hintText;
@@ -28,18 +26,7 @@ public class GameView : MonoBehaviour, IGameView {
     public IObservable<Unit> OnCaptureClicked => captureButton.OnClickAsObservable();
     public IObservable<Unit> OnSwitchCameraClicked => switchCameraButton.OnClickAsObservable();
 
-    void Start()
-    {
-        captureStartButton.onClick.AddListener(() =>
-        {
-            captureStartButton.gameObject.SetActive(false);
-            cameraPreview.enabled = true;
-            captureButton.gameObject.SetActive(true);
-            switchCameraButton.gameObject.SetActive(true);
-        });
-    }
-
-    public void SetScore(string t) { if (scoreText) scoreText.text = t; }
+    public void SetScore(string t){ if (scoreText) scoreText.text = t; }
     public void SetTimer(string t){ if (timerText) timerText.text = t; }
     public void SetHint(string t){ if (hintText)  hintText.text  = t; }
     public void SetCaptureInteractable(bool on){ if (captureButton) captureButton.interactable = on; }

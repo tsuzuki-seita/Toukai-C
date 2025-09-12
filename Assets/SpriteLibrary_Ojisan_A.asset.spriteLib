@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &1
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a5e6fedc2472449cead18ef23b5cb30d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Library:
+  - m_Name: Face
+    m_Hash: 623301721
+    m_CategoryList: []
+    m_OverrideEntries:
+    - m_Name: smile
+      m_Hash: 42599183
+      m_Sprite: {fileID: 21300000, guid: c23587acf21c2449b96a0ee385165743, type: 3}
+      m_FromMain: 1
+      m_SpriteOverride: {fileID: 21300000, guid: c23587acf21c2449b96a0ee385165743, type: 3}
+    - m_Name: Sleep
+      m_Hash: 250801576
+      m_Sprite: {fileID: 21300000, guid: b90d34f8996a240a7bb3c62693d9b79a, type: 3}
+      m_FromMain: 1
+      m_SpriteOverride: {fileID: 21300000, guid: b90d34f8996a240a7bb3c62693d9b79a, type: 3}
+    - m_Name: surprise
+      m_Hash: 963632585
+      m_Sprite: {fileID: 21300000, guid: 28b1c152b8ea04601b303985d19c493c, type: 3}
+      m_FromMain: 0
+      m_SpriteOverride: {fileID: 21300000, guid: 28b1c152b8ea04601b303985d19c493c, type: 3}
+    - m_Name: Wink
+      m_Hash: 294053457
+      m_Sprite: {fileID: 21300000, guid: a381faf8a688f4507b8954e2df87a576, type: 3}
+      m_FromMain: 0
+      m_SpriteOverride: {fileID: 21300000, guid: a381faf8a688f4507b8954e2df87a576, type: 3}
+    m_FromMain: 1
+    m_EntryOverrideCount: 2
+  - m_Name: Clothes
+    m_Hash: 1069845776
+    m_CategoryList: []
+    m_OverrideEntries:
+    - m_Name: Blue
+      m_Hash: 1040475530
+      m_Sprite: {fileID: 21300000, guid: 422c83a27aa11425e93e9ac518d05b5f, type: 3}
+      m_FromMain: 1
+      m_SpriteOverride: {fileID: 21300000, guid: 422c83a27aa11425e93e9ac518d05b5f, type: 3}
+    - m_Name: Pink
+      m_Hash: 206692072
+      m_Sprite: {fileID: 21300000, guid: 97f03f6385ad14f72a7e9bfda96e21c1, type: 3}
+      m_FromMain: 1
+      m_SpriteOverride: {fileID: 21300000, guid: 97f03f6385ad14f72a7e9bfda96e21c1, type: 3}
+    m_FromMain: 1
+    m_EntryOverrideCount: 0
+  m_PrimaryLibraryGUID: 8879d025303154712b813d148273226a
+  m_ModificationHash: 638933327606805710
+  m_Version: 1
